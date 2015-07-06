@@ -9,7 +9,7 @@ package jade;
 import jade.core.Agent;
 
 /**
- * provann
+ * provaXZY
  * @author sp127567
  */
 public class Jade extends Agent {
