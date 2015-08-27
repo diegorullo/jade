@@ -59,6 +59,23 @@ public class Partecipant1 extends Agent {
                           //  block();
                         //}
                         break;
+                    case 2:
+                        mt0 = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
+                        reply0 = receive(mt0);
+                        if (reply0 != null) {
+                            if (reply0.getContent().equals("ESEGUI_TASK")) {
+                                System.out.println(getName() + ": rivevuta INFORM_IF");
+                                ACLMessage msg1 = reply0.createReply();
+                                msg1.setPerformative(ACLMessage.INFORM);
+                                msg1.setContent("TASK_ESEGUITO");
+                                send(msg1);
+                                System.out.println(getName() + ": inviata INFORM");
+                                step++;
+                            }
+                        } //else {
+                          //  block();
+                        //}
+                        break;
                    }
 
                 }

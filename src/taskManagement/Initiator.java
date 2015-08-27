@@ -35,22 +35,22 @@ public class Initiator extends Agent {
                 switch(step) {
                     case 0:
                         ACLMessage msg0 = new ACLMessage(ACLMessage.QUERY_IF);
-                        msg0.addReceiver(new AID("AgenteDue", AID.ISLOCALNAME));
+                        msg0.addReceiver(new AID("Partecipant1", AID.ISLOCALNAME));
                         msg0.setLanguage("Italian");
-                        msg0.setContent("Buongiorno, come sta?");
+                        msg0.setContent("Ciao, puoi eseguire un TASK?");
                         send(msg0);
-                        System.out.println(getName() + ": inviata QUERY_IF");
+                        System.out.println(getName() + ": inviata QUERY_IF, richiesta esecuzione TASK verso P1");
                         step++;
                         break;
                     case 1:
                         MessageTemplate mt0 = MessageTemplate.MatchPerformative(ACLMessage.INFORM_IF);
                         ACLMessage reply0 = receive(mt0);
                         if (reply0 != null) {
-                            if (reply0.getContent().equals("Bene, grazie. E lei?")) {
+                            if (reply0.getContent().equals("SI")) {
                                 System.out.println(getName() + ": rivevuta INFORM_IF");
                                 ACLMessage msg1 = reply0.createReply();
                                 msg1.setPerformative(ACLMessage.INFORM);
-                                msg1.setContent("Bene, grazie.");
+                                msg1.setContent("ESEGUI_TASK");
                                 send(msg1);
                                 System.out.println(getName() + ": inviata INFORM");
                                 step++;
