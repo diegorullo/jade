@@ -25,15 +25,25 @@ public class Initiator extends Agent {
 
         System.out.println("Buongiorno, mi presento sono " + getName() + 
             " e sono pronto ad ASSEGNARE task!");
-
+        
+        
         addBehaviour(new Behaviour() {
 
             private int step = 0;
  
-            public void action() {
 
+            public void action() {
                 switch(step) {
-                    case 0:
+                    case 0:   
+                        ACLMessage msgCFP = new ACLMessage(ACLMessage.QUERY_IF);
+                        msgCFP.addReceiver(new AID("Partecipant1", AID.ISLOCALNAME));
+                        msgCFP.addReceiver(new AID("Partecipant2", AID.ISLOCALNAME));
+                        msgCFP.setLanguage("Italian");
+                        msgCFP.setContent("CFP");
+                        send(msgCFP);
+                        step++;
+                        break;
+                    case 1:
                         ACLMessage msg0 = new ACLMessage(ACLMessage.QUERY_IF);
                         msg0.addReceiver(new AID("Partecipant1", AID.ISLOCALNAME));
                         msg0.setLanguage("Italian");
@@ -42,7 +52,7 @@ public class Initiator extends Agent {
                         System.out.println(getName() + ": inviata QUERY_IF, richiesta esecuzione TASK verso P1");
                         step++;
                         break;
-                    case 1:
+                    case 2:
                         MessageTemplate mt0 = MessageTemplate.MatchPerformative(ACLMessage.INFORM_IF);
                         ACLMessage reply0 = receive(mt0);
                         if (reply0 != null) {
