@@ -43,6 +43,7 @@ public class Initiator extends Agent {
                         send(msgCFP);
                         step++;
                         break;
+                        //
                     case 1:
                         ACLMessage msg0 = new ACLMessage(ACLMessage.QUERY_IF);
                         msg0.addReceiver(new AID("Partecipant1", AID.ISLOCALNAME));
