@@ -20,17 +20,23 @@ import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 
 public class Initiator extends Agent {
-
+    //il router da raggiungere
+    private String targetRouter;
+    //la lista dei Partecipant
+    private AID[] partecipants = {new AID("partecipant1", AID.ISLOCALNAME),
+                                  new AID("partecipant2", AID.ISLOCALNAME)};
     protected void setup() {
 
-        System.out.println("Buongiorno, mi presento sono " + getName() + 
+        System.out.println("[initiator]Buongiorno, mi presento sono " + getName() + 
             " e sono pronto ad ASSEGNARE task!");
         
         
         addBehaviour(new Behaviour() {
-
-            private int step = 0;
- 
+            private AID bestHopAgent; //agente che fornisce le condizioni migliori (minori hop)
+            private int bestHop;  //il migliore (minore) numero di hop
+            private int repliesCnt = 0; // contatore di repliche ricevute dai Partecipant
+            private MessageTemplate mt; // template per ricevere repliche                
+            private int step = 0; 
 
             public void action() {
                 switch(step) {
@@ -45,41 +51,72 @@ public class Initiator extends Agent {
                         break;
                         //
                     case 1:
-                        ACLMessage msg0 = new ACLMessage(ACLMessage.QUERY_IF);
-                        msg0.addReceiver(new AID("Partecipant1", AID.ISLOCALNAME));
-                        msg0.setLanguage("Italian");
-                        msg0.setContent("Ciao, puoi eseguire un TASK?");
-                        send(msg0);
-                        System.out.println(getName() + ": inviata QUERY_IF, richiesta esecuzione TASK verso P1");
-                        step++;
-                        break;
-                    case 2:
-                        MessageTemplate mt0 = MessageTemplate.MatchPerformative(ACLMessage.INFORM_IF);
-                        ACLMessage reply0 = receive(mt0);
-                        if (reply0 != null) {
-                            if (reply0.getContent().equals("SI")) {
-                                System.out.println(getName() + ": rivevuta INFORM_IF");
-                                ACLMessage msg1 = reply0.createReply();
-                                msg1.setPerformative(ACLMessage.INFORM);
-                                msg1.setContent("ESEGUI_TASK");
-                                send(msg1);
-                                System.out.println(getName() + ": inviata INFORM");
-                                step++;
+                        ACLMessage reply= myAgent.receive(mt);
+                        if(reply != null) {
+                        // Reply ricevuto
+                            if(reply.getPerformative() == ACLMessage.PROPOSE) {
+                        // Ho ricevuto una proposta...
+                                int price = Integer.parseInt(reply.getContent());
+                                if(bestHopAgent == null|| price < bestHop) {
+                        // Migliori condizioni di servizio(numero minimo di hop)
+                                    bestHop = price;
+                                    bestHopAgent = reply.getSender();
+                                }
                             }
-                        } //else {
-                          //  block();
-                        //}
+                            repliesCnt++;
+                            if(repliesCnt >= partecipants.length) {
+                        // Tutte le repliche sono state ricevute
+                                step = 2; 
+                            }   
+                        }
+                        else {
+                            block();
+                        }
                         break;
-                   }
-
+                            
+                        
+               
+                    case 2:
+                        // manda l'ordine di inoltro al router che raggiunge il target in meno hop
+                        ACLMessage order = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
+                        order.addReceiver(bestHopAgent);
+                        order.setContent(targetRouter);
+                        order.setConversationId("instradamento");
+                        order.setReplyWith("order"+System.currentTimeMillis());
+                        myAgent.send(order);
+                        // preparazione del template per recuperare l'ordine d'acquisto
+                        mt = MessageTemplate.and(MessageTemplate.MatchConversationId("instradamento"),
+                                                MessageTemplate.MatchInReplyTo(order.getReplyWith()));
+                        step = 3;
+                        break;
+                    case 3:
+                        // Receive the purchase order reply 
+                        reply = myAgent.receive(mt);
+                        if(reply != null) {
+                        // Purchase order reply received
+                            if(reply.getPerformative() == ACLMessage.INFORM) {
+                        // Purchase successful. We can terminate
+                                System.out.println(targetRouter+"instradato con successo.");
+                                System.out.println("Price = "+bestHop);
+                                myAgent.doDelete();
+                            }
+                            step = 4;
+                        }
+                        else {
+                            block();
+                        }
+                        break;               
+                        
                 }
+                     
 
-            public boolean done() {
-                return step == 2;
             }
 
+            public boolean done() {
+                return ((step == 2 && bestHopAgent == null) || step == 4);
+            }
+            
         });
-
     }
 
 }
