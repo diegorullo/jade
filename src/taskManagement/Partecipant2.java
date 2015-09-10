@@ -28,7 +28,7 @@ public class Partecipant2 extends Agent {
         while (keys.hasMoreElements()) {
             Object key = keys.nextElement();
             Object value = catalogue.get(key);
-            System.out.println("[partecipant1] conosco <"+key+">, raggiungibile in <"+value+"> hop.");
+            System.out.println("[partecipant2] conosco <"+key+">, raggiungibile in <"+value+"> hop.");
         }
 	
         
@@ -41,7 +41,7 @@ public class Partecipant2 extends Agent {
     }
     
     protected void takeDown(){
-        System.out.println("[partecipant1]-agent "+getAID().getName()+" sto terminando...");    
+        System.out.println("[partecipant2]-agent "+getAID().getName()+" sto terminando...");    
     }
 
     private class OfferRequestsServer extends CyclicBehaviour {

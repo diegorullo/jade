@@ -9,82 +9,98 @@ package taskManagement;
 import jade.core.Agent;
 import jade.core.behaviours.*;
 import java.util.*;
-
-
-
 import jade.core.AID;
-import jade.core.behaviours.Behaviour;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 
 public class Partecipant1 extends Agent {
-
+    private Hashtable catalogue;
+        
     protected void setup() {
-
+        catalogue = new Hashtable();
+        catalogue.put("unito", new Integer(1));
+        catalogue.put("polito", new Integer(3));
+        catalogue.put("cselt", new Integer(5));
+        catalogue.put("unimi", new Integer(4));
+        catalogue.put("unina", new Integer(2));
+        
+        Enumeration keys = catalogue.keys();
+        while (keys.hasMoreElements()) {
+            Object key = keys.nextElement();
+            Object value = catalogue.get(key);
+            System.out.println("[partecipant1] conosco <"+key+">, raggiungibile in <"+value+"> hop.");
+        }
+	
+        
+        
         System.out.println("Buongiorno, mi presento sono " + getName() + 
-            " e sono pronto ad ESEGUIRE task!");
+            " e sono pronto ad ESEGUIRE task! (instradamento messaggi)");
 
-        addBehaviour(new Behaviour() {
-
-            private int step = 0;
- 
-            public void action() {
-
-                switch(step) {
-                    case 0:
-                        ACLMessage msg0 = new ACLMessage(ACLMessage.QUERY_IF);
-                        msg0.addReceiver(new AID("AgenteDue", AID.ISLOCALNAME));
-                        msg0.setLanguage("Italian");
-                        msg0.setContent("Buongiorno, come sta?");
-                        send(msg0);
-                        System.out.println(getName() + ": inviata QUERY_IF");
-                        step++;
-                        break;
-                    case 1:
-                        MessageTemplate mt0 = MessageTemplate.MatchPerformative(ACLMessage.INFORM_IF);
-                        ACLMessage reply0 = receive(mt0);
-                        if (reply0 != null) {
-                            if (reply0.getContent().equals("Bene, grazie. E lei?")) {
-                                System.out.println(getName() + ": rivevuta INFORM_IF");
-                                ACLMessage msg1 = reply0.createReply();
-                                msg1.setPerformative(ACLMessage.INFORM);
-                                msg1.setContent("Bene, grazie.");
-                                send(msg1);
-                                System.out.println(getName() + ": inviata INFORM");
-                                step++;
-                            }
-                        } //else {
-                          //  block();
-                        //}
-                        break;
-                    case 2:
-                        mt0 = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
-                        reply0 = receive(mt0);
-                        if (reply0 != null) {
-                            if (reply0.getContent().equals("ESEGUI_TASK")) {
-                                System.out.println(getName() + ": rivevuta INFORM_IF");
-                                ACLMessage msg1 = reply0.createReply();
-                                msg1.setPerformative(ACLMessage.INFORM);
-                                msg1.setContent("TASK_ESEGUITO");
-                                send(msg1);
-                                System.out.println(getName() + ": inviata INFORM");
-                                step++;
-                            }
-                        } //else {
-                          //  block();
-                        //}
-                        break;
-                   }
-
-                }
-
-            public boolean done() {
-                return step == 2;
-            }
-
-        });
-
+        addBehaviour(new OfferRequestsServer());
+        addBehaviour(new PurchaseOrdersServer());
     }
+    
+    protected void takeDown(){
+        System.out.println("[partecipant1]-agent "+getAID().getName()+" sto terminando...");    
+    }
+
+    private class OfferRequestsServer extends CyclicBehaviour {
+        public void action() {
+            ACLMessage msg = myAgent.receive();
+            if (msg != null){
+                //messaggio ricevuto: va processato...
+                String title = msg.getContent();
+                ACLMessage reply = msg.createReply();
+                Integer price = (Integer) catalogue.get(title);
+                if (price!=null){
+                    // il router è raggiungibile...
+                    reply.setPerformative(ACLMessage.PROPOSE);
+                    reply.setContent(String.valueOf(price.intValue()));                    
+                }
+                else {
+                    // il router non è tra quelli raggiungibili...
+                    reply.setPerformative(ACLMessage.REFUSE);
+                    reply.setContent("non-raggiungibile");
+                }
+                myAgent.send(reply);    
+            }
+        }
+        
+    }
+    
+    private class PurchaseOrdersServer extends CyclicBehaviour {
+        public void action() {
+            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.ACCEPT_PROPOSAL);
+            ACLMessage msg = myAgent.receive(mt);
+            if (msg != null) {
+                // ACCEPT_PROPOSAL messaggio ricevuto, lo processo...
+                String title = msg.getContent();
+                ACLMessage reply = msg.createReply();
+
+                //FIXME: nel nostro caso non ha senso rimuovere da catalogo...
+                //avrebbe senso se aggiornassimo la tabella di routing
+                //(router irraggiungibile)
+                //poi però dovremmo gestire la notifica se
+                //nuovamente raggiungibile...
+                Integer price = (Integer) catalogue.get(title);
+                
+                if (price != null) {
+                        reply.setPerformative(ACLMessage.INFORM);
+                        System.out.println(title+" spedito messaggio per conto di "+msg.getSender().getName());
+                }
+                else {
+                        // Il router non è raggiungibile dall' agente...
+                        reply.setPerformative(ACLMessage.FAILURE);
+                        reply.setContent("non-raggiungibile");
+                }
+                myAgent.send(reply);
+            }
+            else {
+                block();
+            }
+        }
+    }  // End of inner class OfferRequestsServer
+    
 
 }
                                 
