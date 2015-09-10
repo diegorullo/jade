@@ -10,6 +10,10 @@ import jade.core.Agent;
 import jade.core.behaviours.*;
 import java.util.*;
 import jade.core.AID;
+import jade.domain.DFService;
+import jade.domain.FIPAAgentManagement.DFAgentDescription;
+import jade.domain.FIPAAgentManagement.ServiceDescription;
+import jade.domain.FIPAException;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 
@@ -17,6 +21,20 @@ public class Partecipant2 extends Agent {
     private Hashtable catalogue;
         
     protected void setup() {
+        
+                     // Register the book-selling service in the yellow pages
+        DFAgentDescription dfd = new DFAgentDescription();
+        dfd.setName(getAID());
+        ServiceDescription sd = new ServiceDescription();
+        sd.setType("instradatore");
+        sd.setName("JADE-instradatore");
+        dfd.addServices(sd);
+        try {
+            DFService.register(this, dfd);
+        } catch (FIPAException fe) {
+            fe.printStackTrace();
+        }
+        
         catalogue = new Hashtable();
         catalogue.put("unito", new Integer(4));
         catalogue.put("polito", new Integer(2));

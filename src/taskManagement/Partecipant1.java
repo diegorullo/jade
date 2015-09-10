@@ -10,6 +10,10 @@ import jade.core.Agent;
 import jade.core.behaviours.*;
 import java.util.*;
 import jade.core.AID;
+import jade.domain.DFService;
+import jade.domain.FIPAAgentManagement.DFAgentDescription;
+import jade.domain.FIPAAgentManagement.ServiceDescription;
+import jade.domain.FIPAException;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 
@@ -17,6 +21,19 @@ public class Partecipant1 extends Agent {
     private Hashtable catalogue;
         
     protected void setup() {
+              // Register the book-selling service in the yellow pages
+        DFAgentDescription dfd = new DFAgentDescription();
+        dfd.setName(getAID());
+        ServiceDescription sd = new ServiceDescription();
+        sd.setType("instradatore");
+        sd.setName("JADE-instradatore");
+        dfd.addServices(sd);
+        try {
+            DFService.register(this, dfd);
+        } catch (FIPAException fe) {
+            fe.printStackTrace();
+        }
+        
         catalogue = new Hashtable();
         catalogue.put("unito", new Integer(1));
         catalogue.put("polito", new Integer(3));
@@ -45,9 +62,15 @@ public class Partecipant1 extends Agent {
     }
 
     private class OfferRequestsServer extends CyclicBehaviour {
+        private MessageTemplate mt=
+                MessageTemplate.MatchPerformative(ACLMessage.CFP);
+        
+        
         public void action() {
-            ACLMessage msg = myAgent.receive();
+
+           ACLMessage msg = myAgent.receive(mt);
             if (msg != null){
+                System.out.println("[partecipant1]-agent "+getAID().getName()+" mess arrivato");   
                 //messaggio ricevuto: va processato...
                 String title = msg.getContent();
                 ACLMessage reply = msg.createReply();
@@ -58,11 +81,13 @@ public class Partecipant1 extends Agent {
                     reply.setContent(String.valueOf(price.intValue()));                    
                 }
                 else {
+                    
                     // il router non è tra quelli raggiungibili...
                     reply.setPerformative(ACLMessage.REFUSE);
                     reply.setContent("non-raggiungibile");
                 }
                 myAgent.send(reply);    
+                System.out.println("[partecipant1]-agent "+getAID().getName()+" inviata PROPOSE");   
             }
         }
         
