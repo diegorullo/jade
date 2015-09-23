@@ -18,8 +18,39 @@ import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 
 public class Partecipant1 extends Agent {
-    private Hashtable catalogue;
-        
+    private Hashtable routingTableHops;
+    private Hashtable routingTableThrough;
+    private AID nodoDest;
+    protected class MyNode {
+        private String name;
+        private int hops;
+        private String reachableThrough;
+
+        private MyNode(String pName, int pHops, String pThrough){
+            this.name = pName;
+            this.hops = pHops;
+            this.reachableThrough = pThrough;
+        }
+
+        public void setName(String pName) { 
+            this.name=pName;
+        }
+        public void setHops(int pHops) { 
+            this.hops=pHops;
+        }
+        public void setThrough(String pThrough) { 
+            this.name=pThrough;
+        }
+        public String getName() { 
+            return this.name;
+        }
+        public int getHops() { 
+            return this.hops;
+        }
+        public String getThrough() { 
+            return this.reachableThrough;
+        }
+    }   
     protected void setup() {
               // Register the book-selling service in the yellow pages
         DFAgentDescription dfd = new DFAgentDescription();
@@ -34,34 +65,49 @@ public class Partecipant1 extends Agent {
             fe.printStackTrace();
         }
         
-        catalogue = new Hashtable();
-        catalogue.put("unito", new Integer(1));
-        catalogue.put("polito", new Integer(3));
-        catalogue.put("cselt", new Integer(5));
-        catalogue.put("unimi", new Integer(4));
-        catalogue.put("unina", new Integer(2));
+        /*
+        MyNode[] routeTBL;	
+        routeTBL = new MyNode[3];
+        routeTBL[0] = new MyNode("cselt",1,"direct");
+        routeTBL[1] = new MyNode("unito",1,"direct");
+        routeTBL[2] = new MyNode("cselt",1,"direct");
         
-        Enumeration keys = catalogue.keys();
+        int j;
+        for (j=0; j<3; j++){
+            System.out.println("[partecipant1] conosco <"+routeTBL[j].getName()+">, raggiungibile in <"+routeTBL[j].getHops()+"> hop - da interfaccia <"+routeTBL[j].getThrough()+">");     
+        }*/
+        
+        routingTableHops = new Hashtable();
+        routingTableHops.put("unito", new Integer(1));
+        routingTableHops.put("polito", new Integer(1));
+        routingTableHops.put("cselt", new Integer(1));
+        
+        routingTableThrough = new Hashtable();
+        routingTableThrough.put("unito", "direct");
+        routingTableThrough.put("polito", "direct");
+        routingTableThrough.put("cselt", "direct");
+
+        //catalogue.put("unina", new Integer(5));
+        
+        Enumeration keys = routingTableHops.keys();
         while (keys.hasMoreElements()) {
             Object key = keys.nextElement();
-            Object value = catalogue.get(key);
-            System.out.println("[partecipant1] conosco <"+key+">, raggiungibile in <"+value+"> hop.");
+            Object value = routingTableHops.get(key);
+            System.out.println("[partecipant1] conosco <"+key+">, raggiungibile in <"+value+"> hop - da interfaccia <"+routingTableThrough.get(key)+">");     
         }
-	
-        
         
         System.out.println("Buongiorno, mi presento sono " + getName() + 
             " e sono pronto ad ESEGUIRE task! (instradamento messaggi)");
 
-        addBehaviour(new OfferRequestsServer());
-        addBehaviour(new PurchaseOrdersServer());
+        addBehaviour(new OffreServizio());
+        addBehaviour(new EsegueServizio());
     }
     
     protected void takeDown(){
         System.out.println("[partecipant1]-agent "+getAID().getName()+" sto terminando...");    
     }
 
-    private class OfferRequestsServer extends CyclicBehaviour {
+    private class OffreServizio extends CyclicBehaviour {
         private MessageTemplate mt=
                 MessageTemplate.MatchPerformative(ACLMessage.CFP);
         
@@ -70,15 +116,15 @@ public class Partecipant1 extends Agent {
 
            ACLMessage msg = myAgent.receive(mt);
             if (msg != null){
-                System.out.println("[partecipant1]-agent "+getAID().getName()+" mess arrivato");   
-                //messaggio ricevuto: va processato...
-                String title = msg.getContent();
+                System.out.println("[partecipant1]-agent "+getAID().getName()+" mess arrivato (CFP)");   
+                //CFP ricevuta: va processata...
+                String nodoDest = msg.getContent();
                 ACLMessage reply = msg.createReply();
-                Integer price = (Integer) catalogue.get(title);
-                if (price!=null){
+                Integer nHops = (Integer) routingTableHops.get(nodoDest);
+                if (nHops!=null){
                     // il router è raggiungibile...
                     reply.setPerformative(ACLMessage.PROPOSE);
-                    reply.setContent(String.valueOf(price.intValue()));                    
+                    reply.setContent(String.valueOf(nHops.intValue()));                    
                 }
                 else {
                     
@@ -93,25 +139,35 @@ public class Partecipant1 extends Agent {
         
     }
     
-    private class PurchaseOrdersServer extends CyclicBehaviour {
+    private class EsegueServizio extends CyclicBehaviour {
         public void action() {
             MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.ACCEPT_PROPOSAL);
             ACLMessage msg = myAgent.receive(mt);
             if (msg != null) {
                 // ACCEPT_PROPOSAL messaggio ricevuto, lo processo...
-                String title = msg.getContent();
+                
+                ACLMessage proxyMsg = new ACLMessage(ACLMessage.INFORM);
+                proxyMsg.addReceiver(nodoDest);
+                proxyMsg.setContent(msg.getContent());
+                proxyMsg.setConversationId("instradamento");
+                proxyMsg.setReplyWith("route" + System.currentTimeMillis());
+                myAgent.send(proxyMsg);
+                
+                String messageToForward = msg.getContent();
+                
+                
                 ACLMessage reply = msg.createReply();
 
-                //FIXME: nel nostro caso non ha senso rimuovere da catalogo...
+                //FIXME: in questo caso non ha senso rimuovere ...
                 //avrebbe senso se aggiornassimo la tabella di routing
                 //(router irraggiungibile)
                 //poi però dovremmo gestire la notifica se
                 //nuovamente raggiungibile...
-                Integer price = (Integer) catalogue.get(title);
+                Integer nHops = (Integer) routingTableHops.get(messageToForward);
                 
-                if (price != null) {
+                if (nHops != null) {
                         reply.setPerformative(ACLMessage.INFORM);
-                        System.out.println(title+" spedito messaggio per conto di "+msg.getSender().getName());
+                        System.out.println(messageToForward+" spedito messaggio per conto di "+msg.getSender().getName());
                 }
                 else {
                         // Il router non è raggiungibile dall' agente...
