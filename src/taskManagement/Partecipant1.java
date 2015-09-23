@@ -6,21 +6,23 @@
 
 package taskManagement;
 
+import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.*;
-import java.util.*;
-import jade.core.AID;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.domain.FIPAException;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
 
 public class Partecipant1 extends Agent {
     private Hashtable routingTableHops;
     private Hashtable routingTableThrough;
-    private AID nodoDest;
+    private String nodoDest;
     protected class MyNode {
         private String name;
         private int hops;
@@ -80,13 +82,14 @@ public class Partecipant1 extends Agent {
         routingTableHops = new Hashtable();
         routingTableHops.put("unito", new Integer(1));
         routingTableHops.put("polito", new Integer(1));
-        routingTableHops.put("cselt", new Integer(1));
+        routingTableHops.put("cselt", new Integer(2));
+        routingTableHops.put("unimi", new Integer(2));
         
         routingTableThrough = new Hashtable();
         routingTableThrough.put("unito", "direct");
         routingTableThrough.put("polito", "direct");
-        routingTableThrough.put("cselt", "direct");
-
+        routingTableThrough.put("cselt", "Partecipant2");
+        routingTableThrough.put("unimi", "Partecipant2");
         //catalogue.put("unina", new Integer(5));
         
         Enumeration keys = routingTableHops.keys();
@@ -96,7 +99,7 @@ public class Partecipant1 extends Agent {
             System.out.println("[partecipant1] conosco <"+key+">, raggiungibile in <"+value+"> hop - da interfaccia <"+routingTableThrough.get(key)+">");     
         }
         
-        System.out.println("Buongiorno, mi presento sono " + getName() + 
+        System.out.println("[partecipant1] Buongiorno, mi presento sono " + getName() + 
             " e sono pronto ad ESEGUIRE task! (instradamento messaggi)");
 
         addBehaviour(new OffreServizio());
@@ -118,7 +121,7 @@ public class Partecipant1 extends Agent {
             if (msg != null){
                 System.out.println("[partecipant1]-agent "+getAID().getName()+" mess arrivato (CFP)");   
                 //CFP ricevuta: va processata...
-                String nodoDest = msg.getContent();
+                nodoDest = msg.getContent();
                 ACLMessage reply = msg.createReply();
                 Integer nHops = (Integer) routingTableHops.get(nodoDest);
                 if (nHops!=null){
@@ -133,7 +136,7 @@ public class Partecipant1 extends Agent {
                     reply.setContent("non-raggiungibile");
                 }
                 myAgent.send(reply);    
-                System.out.println("[partecipant1]-agent "+getAID().getName()+" inviata PROPOSE");   
+                System.out.println("[partecipant1] Agent "+getAID().getName()+" inviata PROPOSE");   
             }
         }
         
@@ -145,36 +148,32 @@ public class Partecipant1 extends Agent {
             ACLMessage msg = myAgent.receive(mt);
             if (msg != null) {
                 // ACCEPT_PROPOSAL messaggio ricevuto, lo processo...
+                try {
+                    String path = "C:/" +nodoDest+"/"+msg.getContent();
+                    System.out.println("[partecipant1] Tento di scrivere in: "+path);
+                    File file = new File(path);
+                    ACLMessage reply = msg.createReply();
+                    if (file.createNewFile()){
+                        System.out.println("[partecipant1] Il messaggio è stato recapitato");
                 
-                ACLMessage proxyMsg = new ACLMessage(ACLMessage.INFORM);
-                proxyMsg.addReceiver(nodoDest);
-                proxyMsg.setContent(msg.getContent());
-                proxyMsg.setConversationId("instradamento");
-                proxyMsg.setReplyWith("route" + System.currentTimeMillis());
-                myAgent.send(proxyMsg);
-                
-                String messageToForward = msg.getContent();
-                
-                
-                ACLMessage reply = msg.createReply();
-
-                //FIXME: in questo caso non ha senso rimuovere ...
-                //avrebbe senso se aggiornassimo la tabella di routing
-                //(router irraggiungibile)
-                //poi però dovremmo gestire la notifica se
-                //nuovamente raggiungibile...
-                Integer nHops = (Integer) routingTableHops.get(messageToForward);
-                
-                if (nHops != null) {
+                        
                         reply.setPerformative(ACLMessage.INFORM);
-                        System.out.println(messageToForward+" spedito messaggio per conto di "+msg.getSender().getName());
+                        reply.setContent(String.valueOf("MESSAGGIO-RECAPITATO")); 
+                    }
+                    else {
+                            System.out.println("[partecipant1] Errore disco. messaggio NON recapitato");
+                            
+                            reply.setPerformative(ACLMessage.FAILURE);
+                            reply.setContent(String.valueOf("MESSAGGIO-NON-RECAPITATO"));
+                    }
+                    myAgent.send(reply);
+                
                 }
-                else {
-                        // Il router non è raggiungibile dall' agente...
-                        reply.setPerformative(ACLMessage.FAILURE);
-                        reply.setContent("non-raggiungibile");
+                catch (IOException e) {
+                        e.printStackTrace();
                 }
-                myAgent.send(reply);
+               
+                
             }
             else {
                 block();
