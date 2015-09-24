@@ -137,7 +137,22 @@ public class Initiator extends Agent {
                             MessageTemplate.MatchInReplyTo(order.getReplyWith()));
                     
                     
+                    // manda la REJECT_PROPOSAL a tutti i partecipant tranne il bestHopAgent
+                    ACLMessage msgReject = new ACLMessage(ACLMessage.REJECT_PROPOSAL);
+                    for (int i = 0; i < partecipants.length; ++i) {
+                        if (partecipants[i].compareTo(bestHopAgent)!=0){
+                            msgReject.addReceiver(partecipants[i]);
+                        } else {
+                        }
+                    }
+                    msgReject.setLanguage("Italian");
+                    msgReject.setContent("instradamento");
+                    send(msgReject);
+                    System.out.println("[initiator] REJECT_PROPOSAL inviati");
+                    
                     step = 3;
+                    
+                    
                     break;
                 case 3:
                     // Riceve il messaggio di avvenuto instradamento...
